@@ -1,18 +1,28 @@
-import React, { useState } from 'react';
+
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../store/useAuthStore';
-import { LogIn, Store } from 'lucide-react';
+import { LogIn, Store, Loader2 } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, authError } = useAuthStore();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const { login, authError } = useAuthStore();
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting, errors }
+  } = useForm({
+    defaultValues: { email: '', password: '' }
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const res = await login(form);
+  // formState.isSubmitting is true for the full duration of the async login()
+  // call below, so the button stays disabled the whole time a request is in
+  // flight — a second click/Enter before that resolves can't fire it again.
+  const onSubmit = async (values) => {
+    if (isSubmitting) return;
+    const res = await login(values);
     if (res.success) navigate('/');
   };
 
@@ -33,27 +43,46 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Email</label>
             <input
-              type="email" name="email" value={form.email} onChange={handleChange}
-              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" required
+              type="email"
+              {...register('email', { required: 'Email is required' })}
+              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500"
             />
+            {errors.email && (
+              <p className="text-[11px] text-rose-500 mt-1">{errors.email.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Password</label>
             <input
-              type="password" name="password" value={form.password} onChange={handleChange}
-              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" required
+              type="password"
+              {...register('password', { required: 'Password is required' })}
+              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500"
             />
+            {errors.password && (
+              <p className="text-[11px] text-rose-500 mt-1">{errors.password.message}</p>
+            )}
           </div>
           <button
-            type="submit" disabled={isLoading}
-            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <LogIn className="h-4 w-4" />
-            <span>{isLoading ? 'Logging in...' : 'Log In'}</span>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Logging in...</span>
+              </>
+            ) : (
+              <>
+                <LogIn className="h-4 w-4" />
+                <span>Log In</span>
+              </>
+            )}
           </button>
         </form>
 
