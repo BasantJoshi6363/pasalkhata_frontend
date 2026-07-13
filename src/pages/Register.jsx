@@ -1,18 +1,27 @@
-import React, { useState } from 'react';
+// src/pages/Register.jsx
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { useAuthStore } from '../store/useAuthStore';
-import { UserPlus, Store } from 'lucide-react';
+import { UserPlus, Store, Loader2 } from 'lucide-react';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, isLoading, authError } = useAuthStore();
-  const [form, setForm] = useState({ shopName: '', ownerName: '', email: '', password: '' });
+  const { register: registerUser, authError } = useAuthStore();
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting, errors }
+  } = useForm({
+    defaultValues: { shopName: '', ownerName: '', email: '', password: '' }
+  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const res = await register(form);
+  // Same double-submit guard pattern as Login: isSubmitting disables the button
+  // for the entire async request, plus an explicit early return as a backstop.
+  const onSubmit = async (values) => {
+    if (isSubmitting) return;
+    const res = await registerUser(values);
     if (res.success) navigate('/');
   };
 
@@ -33,34 +42,73 @@ export default function Register() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Shop Name</label>
-            <input type="text" name="shopName" value={form.shopName} onChange={handleChange}
-              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" required />
+            <input
+              type="text"
+              {...register('shopName', { required: 'Shop name is required' })}
+              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+            {errors.shopName && (
+              <p className="text-[11px] text-rose-500 mt-1">{errors.shopName.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Your Name</label>
-            <input type="text" name="ownerName" value={form.ownerName} onChange={handleChange}
-              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" required />
+            <input
+              type="text"
+              {...register('ownerName', { required: 'Your name is required' })}
+              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+            {errors.ownerName && (
+              <p className="text-[11px] text-rose-500 mt-1">{errors.ownerName.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Email</label>
-            <input type="email" name="email" value={form.email} onChange={handleChange}
-              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" required />
+            <input
+              type="email"
+              {...register('email', { required: 'Email is required' })}
+              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+            {errors.email && (
+              <p className="text-[11px] text-rose-500 mt-1">{errors.email.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1">Password</label>
-            <input type="password" name="password" value={form.password} onChange={handleChange} minLength={6}
-              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500" required />
-            <p className="text-[11px] text-slate-400 mt-1">At least 6 characters</p>
+            <input
+              type="password"
+              {...register('password', {
+                required: 'Password is required',
+                minLength: { value: 6, message: 'At least 6 characters' }
+              })}
+              className="w-full p-2.5 text-sm bg-slate-50 border rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+            {errors.password ? (
+              <p className="text-[11px] text-rose-500 mt-1">{errors.password.message}</p>
+            ) : (
+              <p className="text-[11px] text-slate-400 mt-1">At least 6 characters</p>
+            )}
           </div>
           <button
-            type="submit" disabled={isLoading}
-            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition disabled:opacity-60 flex items-center justify-center gap-2"
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <UserPlus className="h-4 w-4" />
-            <span>{isLoading ? 'Creating account...' : 'Create Account'}</span>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Creating account...</span>
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                <span>Create Account</span>
+              </>
+            )}
           </button>
         </form>
 
