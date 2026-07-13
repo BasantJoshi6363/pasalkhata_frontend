@@ -1,8 +1,9 @@
-// src/pages/Dashboard.jsx
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+
+import React, { useEffect, useState, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useLedgerStore } from '../store/useLedgerStore';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, Users, DollarSign, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { Search, UserPlus, Users, DollarSign, AlertTriangle, ArrowUpRight, Loader2 } from 'lucide-react';
 
 // 🧠 OPTIMIZATION: Memoized card sub-component to prevent unnecessary bulk row repainting
 const CustomerCard = React.memo(({ customer }) => (
@@ -45,12 +46,17 @@ export default function Dashboard() {
     isLoading 
   } = useLedgerStore();
 
-  // Local Form & Filtering States
   const [searchQuery, setSearchQuery] = useState('');
-  const [newName, setNewName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newPhone, setNewPhone] = useState('');
   const [formMsg, setFormMsg] = useState({ type: '', text: '' });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting, errors }
+  } = useForm({
+    defaultValues: { newName: '', newEmail: '', newPhone: '' }
+  });
 
   // Initial Data Lifecycle Hydration
   useEffect(() => {
@@ -68,26 +74,26 @@ export default function Dashboard() {
     );
   }, [customers, searchQuery]);
 
-  // 🧠 MEMOIZE: Stable callback hook signature targeting form execution handling
-  const handleCreateCustomer = useCallback(async (e) => {
-    e.preventDefault();
+  // Guarded so a double-click / double-Enter can never fire two create requests:
+  // react-hook-form already disables re-entrancy via isSubmitting, and the button
+  // itself is disabled while isSubmitting is true, but we keep an explicit check too.
+  const onCreateCustomer = async (values) => {
+    if (isSubmitting) return;
     setFormMsg({ type: '', text: '' });
 
-    if (!newName || !newEmail) {
-      setFormMsg({ type: 'error', text: 'Name and email coordinates are strictly required.' });
-      return;
-    }
+    const res = await addCustomer({
+      name: values.newName,
+      email: values.newEmail,
+      phone: values.newPhone
+    });
 
-    const res = await addCustomer({ name: newName, email: newEmail, phone: newPhone });
     if (res.success) {
-      setNewName('');
-      setNewEmail('');
-      setNewPhone('');
+      reset();
       setFormMsg({ type: 'success', text: 'Customer account initiated and welcomed via email!' });
     } else {
       setFormMsg({ type: 'error', text: res.error || 'Failed initialization sequence.' });
     }
-  }, [newName, newEmail, newPhone, addCustomer]);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -194,17 +200,18 @@ export default function Dashboard() {
             </div>
           )}
 
-          <form onSubmit={handleCreateCustomer} className="space-y-3.5">
+          <form onSubmit={handleSubmit(onCreateCustomer)} className="space-y-3.5">
             <div>
               <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Customer Name</label>
               <input 
                 type="text" 
                 placeholder="Full Name" 
-                value={newName} 
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:bg-white transition-all" 
-                required
+                {...register('newName', { required: 'Name is required' })}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
               />
+              {errors.newName && (
+                <p className="text-[10px] text-rose-500 mt-1">{errors.newName.message}</p>
+              )}
             </div>
             
             <div>
@@ -212,11 +219,12 @@ export default function Dashboard() {
               <input 
                 type="email" 
                 placeholder="customer@domain.com" 
-                value={newEmail} 
-                onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:bg-white transition-all" 
-                required
+                {...register('newEmail', { required: 'Email is required' })}
+                className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
               />
+              {errors.newEmail && (
+                <p className="text-[10px] text-rose-500 mt-1">{errors.newEmail.message}</p>
+              )}
             </div>
 
             <div>
@@ -224,17 +232,25 @@ export default function Dashboard() {
               <input 
                 type="text" 
                 placeholder="98XXXXXXXX" 
-                value={newPhone} 
-                onChange={(e) => setNewPhone(e.target.value)}
+                {...register('newPhone')}
                 className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:bg-white transition-all"
               />
             </div>
 
             <button 
               type="submit" 
-              className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 active:scale-[0.99] transition shadow-sm"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+              className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 active:scale-[0.99] transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Initialize Profile Record
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Initializing...</span>
+                </>
+              ) : (
+                <span>Initialize Profile Record</span>
+              )}
             </button>
           </form>
         </div>
