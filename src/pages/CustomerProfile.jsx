@@ -1,9 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { useLocation, useParams, Link } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
 import { useLedgerStore } from '../store/useLedgerStore';
-import { ArrowLeft, PlusCircle, Calendar, FileText, QrCode, Download, CreditCard, Loader2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, CheckCircle, Calendar, FileText, QrCode, Download, CreditCard } from 'lucide-react';
 
 export default function CustomerProfile() {
   const { id } = useParams();
@@ -18,30 +16,29 @@ export default function CustomerProfile() {
     fetchDashboardStats 
   } = useLedgerStore();
 
+  const [txType, setTxType] = useState('CREDIT');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
   const [showQR, setShowQR] = useState(false);
-  const [activeChannel, setActiveChannel] = useState('esewa'); 
+  const [activeChannel, setActiveChannel] = useState('esewa'); // 👈 which channel is shown in the modal
   const [feedbackMsg, setFeedbackMsg] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { isSubmitting }
-  } = useForm({
-    defaultValues: { amount: '', description: '' }
-  });
+  
+  const [paymentMethod, setPaymentMethod] = useState('esewa'); 
 
   const paymentMethodsConfig = {
     esewa: {
       name: 'eSewa',
+      color: 'border-emerald-500 bg-emerald-50/30 text-emerald-700',
       logo: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Esewa_logo.webp'
     },
     khalti: {
       name: 'Khalti',
+      color: 'border-purple-500 bg-purple-50/30 text-purple-700',
       logo: 'https://p7.hiclipart.com/preview/216/915/634/khalti-digital-wallet-payment-gateway-fonepay-nepal-digital-wallet.jpg'
     },
     bank: {
       name: 'Bank Transfer',
+      color: 'border-blue-500 bg-blue-50/30 text-blue-700',
       logo: 'bank-icon'
     }
   };
@@ -51,24 +48,31 @@ export default function CustomerProfile() {
     if (!dashboardStats) fetchDashboardStats();
   }, [id, fetchTransactionHistory, dashboardStats, fetchDashboardStats]);
 
-  // Guarded against double submission: the button is disabled while isSubmitting
-  // is true, and we bail out early here as well in case the handler somehow
-  // fires again before React re-renders the disabled state.
-  const onSubmitTransaction = async (values) => {
-    if (isSubmitting) return;
+  const handleTransactionSubmit = async (e) => {
+    e.preventDefault();
     setFeedbackMsg('');
+
+    if (!amount || !description) {
+      setFeedbackMsg('Please complete all transaction fields.');
+      return;
+    }
+
+    const finalDescription = txType === 'PAYMENT' 
+      ? `${description} (Paid via ${paymentMethodsConfig[paymentMethod].name})`
+      : description;
 
     const payload = {
       customerId: id,
-      type: 'CREDIT', // Always defaults strictly to credit logs
-      amount: parseFloat(values.amount),
-      description: values.description
+      type: txType,
+      amount: parseFloat(amount),
+      description: finalDescription
     };
 
     const res = await addTransaction(payload);
     if (res.success) {
-      setFeedbackMsg('Credit logged successfully! Email receipt sent.');
-      reset();
+      setFeedbackMsg('Transaction logged successfully! Email receipt sent.');
+      setAmount('');
+      setDescription('');
     } else {
       setFeedbackMsg(`Error: ${res.error}`);
     }
@@ -176,7 +180,6 @@ export default function CustomerProfile() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
-        {/* LOG NEW ENTRY FORM */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="font-bold text-slate-900 text-sm">Log New Entry</h3>
           
@@ -186,55 +189,100 @@ export default function CustomerProfile() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmitTransaction)} className="space-y-3.5">
+          <form onSubmit={handleTransactionSubmit} className="space-y-3.5">
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">Transaction Type</label>
-              <div className="w-full py-2 px-3 rounded-lg text-xs font-bold border bg-rose-50 border-rose-300 text-rose-700 inline-flex items-center gap-1.5 select-none">
-                <PlusCircle className="h-3.5 w-3.5" />
-                <span>Give Credit</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  type="button" onClick={() => setTxType('CREDIT')}
+                  className={`py-2 rounded-lg text-xs font-bold border transition ${txType === 'CREDIT' ? 'bg-rose-50 border-rose-300 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                >
+                  <PlusCircle className="h-3.5 w-3.5 inline mr-1" />
+                  Give Credit
+                </button>
+                <button 
+                  type="button" onClick={() => setTxType('PAYMENT')}
+                  className={`py-2 rounded-lg text-xs font-bold border transition ${txType === 'PAYMENT' ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                >
+                  <CheckCircle className="h-3.5 w-3.5 inline mr-1" />
+                  Receive Payment
+                </button>
               </div>
             </div>
+
+            {txType === 'PAYMENT' && (
+              <div className="space-y-2 border-t border-slate-100 pt-3 animate-fade-in">
+                <label className="block text-xs font-semibold text-slate-500">Select Gateway Channel</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {Object.keys(paymentMethodsConfig).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method)}
+                      className={`p-2 rounded-xl text-center border text-[11px] font-bold transition flex flex-col items-center justify-center gap-1.5 ${
+                        paymentMethod === method 
+                          ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700 shadow-sm' 
+                          : 'bg-slate-50/50 border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {paymentMethodsConfig[method].logo === 'bank-icon' ? (
+                        <div className="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                          <CreditCard className="h-4 w-4" />
+                        </div>
+                      ) : (
+                        <img 
+                          src={paymentMethodsConfig[method].logo} 
+                          alt={paymentMethodsConfig[method].name}
+                          className="w-7 h-7 object-contain rounded-full bg-white p-0.5 border border-slate-100"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      )}
+                      <span>{paymentMethodsConfig[method].name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className={`p-3 border rounded-xl flex items-center gap-3 transition-all ${paymentMethodsConfig[paymentMethod].color}`}>
+                  {paymentMethodsConfig[paymentMethod].logo === 'bank-icon' ? (
+                    <CreditCard className="h-5 w-5 opacity-80" />
+                  ) : (
+                    <img 
+                      src={paymentMethodsConfig[paymentMethod].logo} 
+                      className="w-6 h-6 object-contain" 
+                      alt=""
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  )}
+                  <div className="text-xs">
+                    <p className="font-bold">Active: {paymentMethodsConfig[paymentMethod].name}</p>
+                    <p className="opacity-80 text-[10px]">Will be attached to entry receipt</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">Amount (Rs.)</label>
               <input 
-                type="number"
-                step="0.01"
-                placeholder="Enter transaction value"
-                {...register('amount', { required: true, min: 0.01 })}
-                className="w-full p-2 text-sm bg-slate-50 border rounded-lg focus:outline-indigo-500"
+                type="number" placeholder="Enter transaction value" value={amount} onChange={(e) => setAmount(e.target.value)}
+                className="w-full p-2 text-sm bg-slate-50 border rounded-lg focus:outline-indigo-500" required
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">Description / Bought Goods</label>
               <textarea 
-                rows="3"
-                placeholder="e.g., Bought 5kg Sugar"
-                {...register('description', { required: true })}
-                className="w-full p-2 text-sm bg-slate-50 border rounded-lg focus:outline-indigo-500 resize-none"
+                rows="3" placeholder={txType === 'PAYMENT' ? 'e.g., Clearance of outstanding dues' : 'e.g., Bought 5kg Sugar'} value={description} onChange={(e) => setDescription(e.target.value)}
+                className="w-full p-2 text-sm bg-slate-50 border rounded-lg focus:outline-indigo-500 resize-none" required
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              aria-busy={isSubmitting}
-              className="w-full py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <span>Process Entry</span>
-              )}
+            <button type="submit" className="w-full py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition">
+              Process Entry
             </button>
           </form>
         </div>
 
-        {/* ACCOUNT STATEMENT */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 text-sm">Account Statement</h3>
@@ -280,7 +328,7 @@ export default function CustomerProfile() {
 
       </div>
 
-      {/* PAYMENT SETTLEMENT MODAL */}
+      {/* PAYMENT SETTLEMENT MODAL — now channel-aware */}
       {showQR && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white max-w-sm w-full p-6 rounded-2xl border shadow-xl text-center space-y-4">

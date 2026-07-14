@@ -1,7 +1,7 @@
 // src/components/Navbar.jsx
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Store, Layers, LogOut } from 'lucide-react';
+import { LayoutDashboard, Store, Layers, LogOut, LineChart } from 'lucide-react';
 import { useLedgerStore } from '../store/useLedgerStore';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -23,7 +23,7 @@ export default function Navbar() {
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          
+
           {/* Brand/Logo Section */}
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-indigo-600 tracking-tight">
             <Layers className="h-6 w-6" />
@@ -32,16 +32,22 @@ export default function Navbar() {
 
           {/* Nav Links */}
           <div className="flex items-center gap-6">
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 transition"
             >
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
             </Link>
-
-            <Link 
-              to="/settings" 
+            <Link
+              to="/analytics"
+              className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 transition"
+            >
+              <LineChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
+            </Link>
+            <Link
+              to="/settings"
               className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 transition"
             >
               <Store className="h-4 w-4" />

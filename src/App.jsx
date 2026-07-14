@@ -9,14 +9,31 @@ import NotFound from './pages/NotFound';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
     <Router>
       <Routes>
         {/* Public auth routes — no Navbar, no protection */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
 
         {/* Everything else requires a logged-in user */}
         <Route
@@ -33,6 +50,7 @@ function App() {
                     <Route path="/customer/:id" element={<CustomerProfile />} />
                     <Route path="/settings" element={<StoreSettings />} />
                     <Route path="*" element={<NotFound />} />
+                    <Route path="/analytics" element={<Analytics />} />
                   </Routes>
                 </main>
               </div>

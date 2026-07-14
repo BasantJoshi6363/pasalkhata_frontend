@@ -5,7 +5,6 @@ import { useLedgerStore } from '../store/useLedgerStore';
 import { Link } from 'react-router-dom';
 import { Search, UserPlus, Users, DollarSign, AlertTriangle, ArrowUpRight, Loader2 } from 'lucide-react';
 
-// 🧠 OPTIMIZATION: Memoized card sub-component to prevent unnecessary bulk row repainting
 const CustomerCard = React.memo(({ customer }) => (
   <Link 
     to={`/customer/${customer._id}`} 
